@@ -3,6 +3,8 @@
 using namespace std;
 
 ofstream R("Octave.txt");
+
+int skaiciavimuKiekisDalijimoPusiau;
 /////////////////////////////////////////////////////////////////////////////////////////////////
 struct duKint { //Vartotojo apibreztas kintamasis kad galima butu perduoti 2 kintamuosius
 	double xNaujas1, xNaujas2;
@@ -26,10 +28,10 @@ duKint gradientas(duKint x) // skaiciuojamas gradientas nuo tasku
 	return a;
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
-
-/////////////////////////////////////////////////////////////////////////////////////////////////
 void gradientinisNusileidimas(duKint a)
 {
+	int zingsniuKiekis = 0, funkSkai=0;
+	double naujas1, naujas2;
 	duKint taskai = a; //kad nepakeistu pradinio tasko
 	duKint zingsnis = taskai;
 	double epsilon = 0.0000000001;
@@ -37,16 +39,34 @@ void gradientinisNusileidimas(duKint a)
 	int pabaiga = 0;
 	while (pabaiga != 1)
 	{
+		zingsniuKiekis++;
+		naujas1 = gradientas(taskai).xNaujas1;
+		naujas2 = gradientas(taskai).xNaujas2;
+		funkSkai += 4;
+		if (naujas1 == 0 && naujas2 ==0) {
+			cout << "Is tasko: (" << taskai.xNaujas1 << ", " << taskai.xNaujas2 << ") optimizuoti neimanoma" << endl;
+			break;
+		}
+		funkSkai += 2;
 		zingsnis.xNaujas1 = taskai.xNaujas1;
 		zingsnis.xNaujas2 = taskai.xNaujas2;
-		R << "plot3(" << taskai.xNaujas1 << ", " << taskai.xNaujas2 << ", " << tiksloFunkcija(taskai) << ",'ro', 'MarkerSize', 10)" << endl;// Vizualizcijai su octave
-		taskai.xNaujas1 = taskai.xNaujas1 - gamma * gradientas(taskai).xNaujas1;
-		taskai.xNaujas2 = taskai.xNaujas2 - gamma * gradientas(taskai).xNaujas2;
-		if (zingsnis.xNaujas1 - taskai.xNaujas1 <= epsilon && zingsnis.xNaujas2 - taskai.xNaujas2 <= epsilon)
+		R << "plot3(" << taskai.xNaujas1 << ", " << taskai.xNaujas2 << ", " << tiksloFunkcija(taskai) << ",'ro', 'MarkerSize', 10)" << endl;// Vizualizcijai su octave // Vizualizacijai neskaiciuoju skaiciavimu
+		taskai.xNaujas1 = taskai.xNaujas1 - gamma * naujas1;
+		taskai.xNaujas2 = taskai.xNaujas2 - gamma * naujas2;
+		if (fabs(zingsnis.xNaujas1 - taskai.xNaujas1) <= epsilon && fabs(zingsnis.xNaujas2 - taskai.xNaujas2) <= epsilon)
 		{
 			pabaiga = 1;
 		}
 	}
+	if (hessePatikra(taskai.xNaujas1, taskai.xNaujas2) == 1)
+	{
+		cout << "Hesse matrica teigiamai aprezta" << endl;
+	}
+	else
+	{
+		cout << "Hesse matrica nera teigiamai aprezta" << endl;
+	}
+	cout << "Gauti sprendiniai X2: " << taskai.xNaujas1 << " X3: " << taskai.xNaujas2 << " F(x): " << tiksloFunkcija(taskai) << " Atlikti zingsniai: " << zingsniuKiekis << " Funkciju skaiciavimo skaicius: "<< funkSkai << endl;
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
 // Gradientinio nusileidimo optimizavimo
@@ -64,6 +84,7 @@ double gammosFormule(duKint x, duKint grad, double gamma) {
 
 double intervaloPusiau(duKint Xi, duKint grad)
 {
+	skaiciavimuKiekisDalijimoPusiau = 0;
 	int pabaiga = 0;
 	double l = 0, r = 5;
 	double xm = (l + r) / 2;
@@ -71,6 +92,7 @@ double intervaloPusiau(duKint Xi, duKint grad)
 	double x1, x2;
 	double fxm, fx1, fx2;
 	fxm = gammosFormule(Xi, grad, xm);
+	skaiciavimuKiekisDalijimoPusiau+=2;
 	while (pabaiga != 1)
 	{
 		x1 = l + L / 4;
@@ -78,6 +100,8 @@ double intervaloPusiau(duKint Xi, duKint grad)
 
 		fx1= gammosFormule(Xi, grad, x1);
 		fx2= gammosFormule(Xi, grad, x2);
+		skaiciavimuKiekisDalijimoPusiau += 4;
+
 		if (fx1 < fxm)
 		{
 			r = xm;
@@ -106,6 +130,7 @@ double intervaloPusiau(duKint Xi, duKint grad)
 /////////////////////////////////////////////////////////////////////////////////////////////////
 void greiciausiasNusileidimas(duKint X0)
 {
+	int zingsniuKiekis = 0, funkSkai = 0;
 	duKint X;
 	duKint grad;
 	double gamma, naujaReiksme;
@@ -113,26 +138,41 @@ void greiciausiasNusileidimas(duKint X0)
 	double epsilon = 0.00000000000000001;
 	X = X0;
 	double Xreiksme = tiksloFunkcija(X);
+	funkSkai++;
 	for (int i = 0; i < 100000; i++)
 	{
+		zingsniuKiekis++;
 		R << "plot3(" << X.xNaujas1 << ", " << X.xNaujas2 << ", " << tiksloFunkcija(X) << ",'bo', 'MarkerSize', 10)" << endl;
 		grad = gradientas(X);
+		funkSkai+=2;
 		if (grad.xNaujas1 == 0 && grad.xNaujas2 == 0) {
+			cout << "Is tasko: (" << X.xNaujas1 << ", " <<	X.xNaujas2 << ") optimizuoti neimanoma" << endl;
 			break;
 		}
-		else {
-			gamma = intervaloPusiau(X, grad);
-			xNaujas = gammosFormule(gamma, X, grad);
-			naujaReiksme = tiksloFunkcija(xNaujas);
-		}
+		gamma = intervaloPusiau(X, grad);
+		funkSkai += skaiciavimuKiekisDalijimoPusiau;
+
+		xNaujas = gammosFormule(gamma, X, grad);
+		funkSkai += 2;
+
+		naujaReiksme = tiksloFunkcija(xNaujas);
+		funkSkai ++;
 		if (sqrt(grad.xNaujas1 * grad.xNaujas1 + grad.xNaujas2 * grad.xNaujas2) < epsilon || abs(naujaReiksme - Xreiksme) < epsilon) {
 			break;
 		}
-		else {
-			X = xNaujas;
-			Xreiksme = naujaReiksme;
-		}
+		X = xNaujas;
+		Xreiksme = naujaReiksme;
 	}
+	if (hessePatikra(X.xNaujas1, X.xNaujas2) == 1)
+	{
+		cout << "Hesse matrica teigiamai aprezta" << endl;
+	}
+	else
+	{
+		cout << "Hesse matrica nera teigiamai aprezta" << endl;
+	}
+	cout << "Gauti sprendiniai X2: " << X.xNaujas1 << " X3: " << X.xNaujas2 << " F(x): " << tiksloFunkcija(X) << " Atlikti zingsniai: " << zingsniuKiekis << " Funkciju skaiciavimo skaicius: " << funkSkai << endl ;
+
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
 int main()
@@ -157,20 +197,28 @@ int main()
 	duKint c{ 0.2,0.4 };
 	R << "% Gradientinis nusileidimas" << endl;
 	R << "% Taskas(0, 0)" << endl;
+	cout << "Gradientinis nusileidimas" << endl;
+	cout << "Taskas(0, 0)" << endl;
 	gradientinisNusileidimas(a);
 	R << "% Taskas(1, 1) " << endl;
+	cout << "Taskas(1, 1)" << endl;
 	gradientinisNusileidimas(b);
 	R << "% Taskas(0.2, 0.4) " << endl;
+	cout << "Taskas(0.2, 0.4)" << endl;
 	gradientinisNusileidimas(c);
-
+	cout << endl;
 	////////////////////////////////////////////////////////////////////////////////////greiciausiasNusileidimas
 	R << "% Greičiausias nusileidimas" << endl;
 	R << "% Taskas(0, 0)" << endl;
+	cout << "Greičiausias nusileidimas" << endl;
+	cout << "Taskas(0, 0)" << endl;
 	greiciausiasNusileidimas(a);
 	R << "% Taskas(1, 1) " << endl;
+	cout << "Taskas(1, 1)" << endl;
 	greiciausiasNusileidimas(b);
 	R << "% Taskas(0.2, 0.4) " << endl;
+	cout << "Taskas(0.2, 0.4)" << endl;
 	greiciausiasNusileidimas(c);
 	////////////////////////////////////////////////////////////////////////////////////deformuotasSimplekso
-
+	//Implementuot nepavyko//
 }
