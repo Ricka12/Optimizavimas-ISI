@@ -13,4 +13,5 @@
 <hr>
 <h2>Kas čia vyksta?</h2>
 <h5>Čia yra universitetinio darbo optimizavimo užduotis.</h5>
-<h5>Kol kas nieko</h5>
+<h5>Pateiktame Optimizavimas2.cpp faile suprogramuotos funkcijos: gradientinio nusileidimo, greičiausiojo nusileidimo.</h5>
+<h5>Vizualizavimas įvykdytas naudojant GNU Octave. C++ failas išveda reikiamus duomenis į "Octave.txt". Online Octave versija nevizualizuoja funkcijos.</h5>
