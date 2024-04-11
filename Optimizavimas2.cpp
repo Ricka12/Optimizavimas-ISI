@@ -13,24 +13,9 @@ bool hessePatikra(double x2, double x3)
 	return 2 * x3 >= 0 && 2 * x2 + 2 * x3 - 1 >= 0 && 2 * x2 >= 0;//grazina 1 jei hesse matrica teigiamai apibrezta
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
-double tiksloFunkcija(double x2, double x3) //tikslo funkcija su kuria yra dirbama
+double tiksloFunkcija(duKint a) //tikslo funkcija su kuria yra dirbama
 {
-	return (x2 * x2 * x3 + x2 * x3 * x3 - x2 * x3) / 8;
-}
-/////////////////////////////////////////////////////////////////////////////////////////////////
-double minimizuojamGamma(double gamma, double x1, double x2, double a1, double a2)
-{
-	if (x1 - gamma * a1 < x2 - gamma * a2 && gamma >= 0)
-	{
-		return x1 - gamma * a1;
-	}
-	else if (x1 - gamma * a1 > x2 - gamma * a2 && gamma >= 0)
-	{
-		return x2 - gamma * a2;
-	}
-	else {
-		return 0;
-	}
+	return (a.xNaujas1 * a.xNaujas1 * a.xNaujas2 + a.xNaujas1 * a.xNaujas2 * a.xNaujas2 - a.xNaujas1 * a.xNaujas2) / 8.0;
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
 duKint gradientas(duKint x) // skaiciuojamas gradientas nuo tasku
@@ -38,26 +23,61 @@ duKint gradientas(duKint x) // skaiciuojamas gradientas nuo tasku
 	duKint a;
 	a.xNaujas1 = (2 * x.xNaujas1 * x.xNaujas2 + x.xNaujas2 * x.xNaujas2 - x.xNaujas2) / 8;
 	a.xNaujas2 = (x.xNaujas1 * x.xNaujas1 + 2 * x.xNaujas1 * x.xNaujas2 - x.xNaujas1) / 8;
-
 	return a;
 }
-/////////////////////////////////////////////////////////////////////////////////////////////////Intervalo dalijimo pusiau metodas
-double intervaloPusiau(double gamma, duKint a)
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+void gradientinisNusileidimas(duKint a)
+{
+	duKint taskai = a; //kad nepakeistu pradinio tasko
+	duKint zingsnis = taskai;
+	double epsilon = 0.0000000001;
+	double gamma = 0.75;
+	int pabaiga = 0;
+	while (pabaiga != 1)
+	{
+		zingsnis.xNaujas1 = taskai.xNaujas1;
+		zingsnis.xNaujas2 = taskai.xNaujas2;
+		R << "plot3(" << taskai.xNaujas1 << ", " << taskai.xNaujas2 << ", " << tiksloFunkcija(taskai) << ",'ro', 'MarkerSize', 10)" << endl;// Vizualizcijai su octave
+		taskai.xNaujas1 = taskai.xNaujas1 - gamma * gradientas(taskai).xNaujas1;
+		taskai.xNaujas2 = taskai.xNaujas2 - gamma * gradientas(taskai).xNaujas2;
+		if (zingsnis.xNaujas1 - taskai.xNaujas1 <= epsilon && zingsnis.xNaujas2 - taskai.xNaujas2 <= epsilon)
+		{
+			pabaiga = 1;
+		}
+	}
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////
+// Gradientinio nusileidimo optimizavimo
+duKint gammosFormule(double gamma, duKint x, duKint grad) {
+	double xNaujas1 = x.xNaujas1 - gamma * grad.xNaujas1;
+	double xNaujas2 = x.xNaujas1 - gamma * grad.xNaujas2;
+	return { xNaujas1, xNaujas2 };
+}
+double gammosFormule(duKint x, duKint grad, double gamma) {
+	double xNaujas1 = x.xNaujas1 - gamma * grad.xNaujas1;
+	double xNaujas2 = x.xNaujas1 - gamma * grad.xNaujas2;
+	return tiksloFunkcija({ xNaujas1, xNaujas2 });
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////Intervalo dalijimo pusiau metodas optimizuoti gamma
+
+double intervaloPusiau(duKint Xi, duKint grad)
 {
 	int pabaiga = 0;
-	double l = 0, r = 10;
+	double l = 0, r = 5;
 	double xm = (l + r) / 2;
 	double L = r - l;
 	double x1, x2;
 	double fxm, fx1, fx2;
-	fxm = minimizuojamGamma(xm, a.xNaujas1, a.xNaujas2, gradientas(a).xNaujas1, gradientas(a).xNaujas2);
+	fxm = gammosFormule(Xi, grad, xm);
 	while (pabaiga != 1)
 	{
 		x1 = l + L / 4;
 		x2 = r - L / 4;
-		
-		fx1 = minimizuojamGamma(x1, a.xNaujas1, a.xNaujas2, gradientas(a).xNaujas1, gradientas(a).xNaujas2);
-		fx2 = minimizuojamGamma(x2, a.xNaujas1, a.xNaujas2, gradientas(a).xNaujas1, gradientas(a).xNaujas2);
+
+		fx1= gammosFormule(Xi, grad, x1);
+		fx2= gammosFormule(Xi, grad, x2);
 		if (fx1 < fxm)
 		{
 			r = xm;
@@ -81,56 +101,37 @@ double intervaloPusiau(double gamma, duKint a)
 			pabaiga = 1;
 		}
 	}
-	if (fx1 <= fxm && fx1 <= fx2)
-	{
-		return fx1;
-	}
-	else if (fxm <= fx1 && fxm <= fx2)
-	{
-		return fxm;
-	}
-	else {
-		return fx2;
-	}
+	return xm;
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
-void gradientinisNusileidimas(duKint a)
+void greiciausiasNusileidimas(duKint X0)
 {
-	duKint zingsnis = a;
-	double gamma = 0.75;
-	int pabaiga = 0;
-	while (pabaiga != 1)
+	duKint X;
+	duKint grad;
+	double gamma, naujaReiksme;
+	duKint xNaujas;
+	double epsilon = 0.00000000000000001;
+	X = X0;
+	double Xreiksme = tiksloFunkcija(X);
+	for (int i = 0; i < 100000; i++)
 	{
-		zingsnis.xNaujas1 = a.xNaujas1;
-		zingsnis.xNaujas2 = a.xNaujas2;
-		R << "plot3(" << a.xNaujas1 << ", " << a.xNaujas2 << ", " << tiksloFunkcija(a.xNaujas1, a.xNaujas2) << ",'ro', 'MarkerSize', 5)" << endl;// Vizualizcijai su octave
-		a.xNaujas1 = a.xNaujas1 - gamma * gradientas(a).xNaujas1;
-		a.xNaujas2 = a.xNaujas2 - gamma * gradientas(a).xNaujas2;
-		if (zingsnis.xNaujas1 - a.xNaujas1 <= 0.0000000001 && zingsnis.xNaujas2 - a.xNaujas2 <= 0.0000000001)
-		{
-			pabaiga = 1;
+		R << "plot3(" << X.xNaujas1 << ", " << X.xNaujas2 << ", " << tiksloFunkcija(X) << ",'bo', 'MarkerSize', 10)" << endl;
+		grad = gradientas(X);
+		if (grad.xNaujas1 == 0 && grad.xNaujas2 == 0) {
+			break;
 		}
-	}
-}
-/////////////////////////////////////////////////////////////////////////////////////////////////
-void greiciausiasNusileidimas(duKint a)
-{
-	duKint zingsnis = a;
-	double gamma = 1;
-	int pabaiga = 0;
-	srand(time(NULL));
-	while (pabaiga != 1)
-	{
-		zingsnis.xNaujas1 = a.xNaujas1;
-		zingsnis.xNaujas2 = a.xNaujas2;
-		R << "plot3(" << a.xNaujas1 << ", " << a.xNaujas2 << ", " << tiksloFunkcija(a.xNaujas1, a.xNaujas2) << ",'bo', 'MarkerSize', 5)" << endl;// Vizualizcijai su octave
-		a.xNaujas1 = a.xNaujas1 - gamma * gradientas(a).xNaujas1;
-		a.xNaujas2 = a.xNaujas2 - gamma * gradientas(a).xNaujas2;
-		if (zingsnis.xNaujas1 - a.xNaujas1 <= 0.0000000001 && zingsnis.xNaujas2 - a.xNaujas2 <= 0.0000000001)
-		{
-			pabaiga = 1;
+		else {
+			gamma = intervaloPusiau(X, grad);
+			xNaujas = gammosFormule(gamma, X, grad);
+			naujaReiksme = tiksloFunkcija(xNaujas);
 		}
-		gamma = intervaloPusiau(gamma, a);
+		if (sqrt(grad.xNaujas1 * grad.xNaujas1 + grad.xNaujas2 * grad.xNaujas2) < epsilon || abs(naujaReiksme - Xreiksme) < epsilon) {
+			break;
+		}
+		else {
+			X = xNaujas;
+			Xreiksme = naujaReiksme;
+		}
 	}
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,13 +155,14 @@ int main()
 	duKint a{ 0,0 };
 	duKint b{ 1,1 };
 	duKint c{ 0.2,0.4 };
-	/*R << "% Gradientinis nusileidimas" << endl;
+	R << "% Gradientinis nusileidimas" << endl;
 	R << "% Taskas(0, 0)" << endl;
 	gradientinisNusileidimas(a);
 	R << "% Taskas(1, 1) " << endl;
 	gradientinisNusileidimas(b);
 	R << "% Taskas(0.2, 0.4) " << endl;
-	gradientinisNusileidimas(c);*/
+	gradientinisNusileidimas(c);
+
 	////////////////////////////////////////////////////////////////////////////////////greiciausiasNusileidimas
 	R << "% Greičiausias nusileidimas" << endl;
 	R << "% Taskas(0, 0)" << endl;
@@ -170,9 +172,5 @@ int main()
 	R << "% Taskas(0.2, 0.4) " << endl;
 	greiciausiasNusileidimas(c);
 	////////////////////////////////////////////////////////////////////////////////////deformuotasSimplekso
-	/*
-	Sudaromas pradinis simpleksas ir visose jo viršun¯ ese ˙
-apskaiciuojamos tikslo funkcijos reikšm ˇ es. Simplekso dydi˛ ˙
-reguliuoja parametras α. a parenkamas pacio zmogaus??
-*/
+
 }
